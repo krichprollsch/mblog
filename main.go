@@ -38,19 +38,20 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	// TODO use env var by default is set.
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	var (
-		in  = flags.String("in", "in", "input markdown directory")
-		out = flags.String("out", "out", "output html directory")
+		in   = flags.String("in", "in", "input markdown directory")
+		out  = flags.String("out", "out", "output html directory")
+		tmpl = flags.String("tmpl", "tmpl", "templates directory")
 	)
 	// usage func declaration.
 	flags.Usage = func() {
 		fmt.Fprintf(stdout, "%s is micro blogging static generator\n", args[0])
 		fmt.Fprintf(stdout, "usage:\n")
-		fmt.Fprintf(stdout, "\t%s [-in <input dir>] [-out <output dir>]\tgenerates the html.\n", args[0])
+		fmt.Fprintf(stdout, "\t%s [-tmpl <templates dir>] [-in <input dir>] [-out <output dir>]\tgenerates the html.\n", args[0])
 	}
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
 
-	g := gen.New(os.DirFS(*in), *out)
+	g := gen.New(os.DirFS(*tmpl), os.DirFS(*in), *out)
 	return g.Run(ctx)
 }
