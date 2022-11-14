@@ -6,8 +6,13 @@
     </head>
     <body>
         <h1>Posts</h1>
-        <ul>{{range .}}
-            <li><a href="{{ .Href }}">{{ .Title }}</a></li>{{end}}
+        <ul>{{range .}}{{if .IsPost }}
+            <li><a href="{{ .Href }}">{{ .Date.Format "2006-01-02" }} {{ .Title }}</a></li>{{end}}{{end}}
+        </ul>
+
+        <h1>About</h1>
+        <ul>{{range .}}{{if not .IsPost }}
+            <li><a href="{{ .Href }}">{{ .Title }}</a></li>{{end}}{{end}}
         </ul>
     </body>
 </html>

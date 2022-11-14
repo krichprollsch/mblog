@@ -6,5 +6,6 @@
     </head>
     <body>
         {{ .Content }}
+        <footer>{{ if .Meta.IsPost }}Article published on {{ .Meta.Date.Format "2006-01-02"}} | {{end}}<a href="/">Homepage</a></footer>
     </body>
 </html>

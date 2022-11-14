@@ -11,6 +11,7 @@ func TestMetadataUnmarshalText(t *testing.T) {
 		"date: 2022-11-14\ntitle: Hello world\n",
 		"title: foo: bar",
 	} {
+		tc := tc
 		t.Run(tc, func(t *testing.T) {
 			var m metadata
 			if err := m.UnmarshalText([]byte(tc)); err != nil {
@@ -24,6 +25,7 @@ func TestMetadataUnmarshalText(t *testing.T) {
 		"k", ": v", "k:",
 		"date: 14-11-2022",
 	} {
+		tc := tc
 		t.Run(tc, func(t *testing.T) {
 			var m metadata
 			if err := m.UnmarshalText([]byte(tc)); err == nil {
