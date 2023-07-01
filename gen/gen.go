@@ -19,6 +19,7 @@ const (
 const (
 	TmplIndex = "index.tmpl"
 	TmplPost  = "post.tmpl"
+	TmplPage  = "page.tmpl"
 )
 
 // Generator generates HTML files by converting markdown files from input dir
@@ -43,7 +44,7 @@ func New(tmpl, input fs.FS, output string) *Generator {
 func parseTmpl(FS fs.FS) (map[string]*template.Template, error) {
 	// Parse the templates.
 	templates := make(map[string]*template.Template)
-	for _, t := range []string{TmplIndex, TmplPost} {
+	for _, t := range []string{TmplIndex, TmplPost, TmplPage} {
 		tmpl, err := template.New(t).ParseFS(FS, t)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", t, err)
@@ -92,7 +93,14 @@ func (g *Generator) Run(ctx context.Context) error {
 		}
 		defer fout.Close()
 
-		err = templates[TmplPost].Execute(fout, struct {
+		var tmpl *template.Template
+		if post.Meta.IsPost() {
+			tmpl = templates[TmplPost]
+		} else {
+			tmpl = templates[TmplPage]
+		}
+
+		err = tmpl.Execute(fout, struct {
 			Meta    metadata
 			Content template.HTML
 		}{
