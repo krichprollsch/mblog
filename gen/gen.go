@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -115,6 +116,9 @@ func (g *Generator) Run(ctx context.Context) error {
 
 		fout.Close()
 	}
+
+	// sort meta data by date desc.
+	sort.Slice(metas, func(i, j int) bool { return metas[i].Date.After(metas[j].Date) })
 
 	// Write homepage file.
 	fout, err := os.Create(filepath.Join(g.output, homepage))
