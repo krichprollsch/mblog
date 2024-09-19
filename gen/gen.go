@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html/template"
@@ -71,8 +72,10 @@ func (g *Generator) Run(ctx context.Context) error {
 		return fmt.Errorf("markdown: %w", err)
 	}
 
-	metas := make([]metadata, len(files))
-	for i, f := range files {
+	var index *post
+
+	metas := make([]metadata, 0, len(files))
+	for _, f := range files {
 		post, err := parsePost(g.input, f)
 		if err != nil {
 			return fmt.Errorf("html: %w", err)
@@ -81,6 +84,11 @@ func (g *Generator) Run(ctx context.Context) error {
 		// generate filename.
 		outname := strings.Replace(f, markdownExt, htmlExt, 1)
 		post.Meta.Href = outname
+
+		if outname == homepage {
+			index = post
+			continue
+		}
 
 		// Create sub folders.
 		if err := mkdir(g.output, outname); err != nil {
@@ -95,10 +103,21 @@ func (g *Generator) Run(ctx context.Context) error {
 		defer fout.Close()
 
 		var tmpl *template.Template
-		if post.Meta.IsPost() {
-			tmpl = templates[TmplPost]
+		if t := post.Meta.Template; t != "" {
+			// user defined template
+			var ok bool
+			tmpl, ok = templates[t]
+			if !ok {
+				// the template doesn't exists
+				return fmt.Errorf("template not found: %s", t)
+			}
 		} else {
-			tmpl = templates[TmplPage]
+			// default template
+			if post.Meta.IsPost() {
+				tmpl = templates[TmplPost]
+			} else {
+				tmpl = templates[TmplPage]
+			}
 		}
 
 		err = tmpl.Execute(fout, struct {
@@ -108,7 +127,7 @@ func (g *Generator) Run(ctx context.Context) error {
 			Meta:    post.Meta,
 			Content: template.HTML(post.Content),
 		})
-		metas[i] = post.Meta
+		metas = append(metas, post.Meta)
 
 		if err != nil {
 			return fmt.Errorf("write post: %w", err)
@@ -126,7 +145,39 @@ func (g *Generator) Run(ctx context.Context) error {
 		return fmt.Errorf("create file: %w", err)
 	}
 
-	err = templates[TmplIndex].Execute(fout, metas)
+	if index == nil {
+		err = templates[TmplIndex].Execute(fout, metas)
+		if err != nil {
+			return fmt.Errorf("write homepage: %w", err)
+		}
+
+		return nil
+
+	}
+
+	tmpl, err := template.New("index.md").Parse(index.Content)
+	if err != nil {
+		return fmt.Errorf("parse index.md: %w", err)
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, metas)
+	if err != nil {
+		return fmt.Errorf("write homepage: %w", err)
+	}
+
+	t := TmplIndex
+	if tt := index.Meta.Template; tt != "" {
+		t = tt
+	}
+
+	err = templates[t].Execute(fout, struct {
+		Meta    metadata
+		Content template.HTML
+	}{
+		Meta:    index.Meta,
+		Content: template.HTML(buf.String()),
+	})
 	if err != nil {
 		return fmt.Errorf("write homepage: %w", err)
 	}

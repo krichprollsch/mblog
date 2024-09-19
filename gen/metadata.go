@@ -7,9 +7,10 @@ import (
 )
 
 type metadata struct {
-	Title string
-	Date  time.Time
-	Href  string
+	Title    string
+	Date     time.Time
+	Href     string
+	Template string
 }
 
 var ErrInvalidMetadata = errors.New("invalid metadata")
@@ -31,7 +32,7 @@ func (m *metadata) UnmarshalText(b []byte) error {
 			return ErrInvalidMetadata
 		}
 
-		switch key {
+		switch k {
 		case "date":
 			d, err := time.Parse(datefmt, buf.String())
 			if err != nil {
@@ -40,6 +41,8 @@ func (m *metadata) UnmarshalText(b []byte) error {
 			m.Date = d
 		case "title":
 			m.Title = buf.String()
+		case "template":
+			m.Template = buf.String()
 		default:
 			return ErrInvalidMetadata
 		}
