@@ -3,6 +3,7 @@ package gen
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -43,13 +44,35 @@ func New(tmpl, input fs.FS, output string) *Generator {
 	}
 }
 
+func parseOneTmpl(FS fs.FS, t string) (*template.Template, error) {
+	// test file exists
+	statFS, ok := FS.(fs.StatFS)
+	if !ok {
+		return nil, errors.New("invalid filesystem")
+	}
+	if _, err := statFS.Stat(t); err != nil {
+		return nil, err
+	}
+
+	tmpl, err := template.New(t).ParseFS(FS, t)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", t, err)
+	}
+
+	return tmpl, nil
+}
+
 func parseTmpl(FS fs.FS) (map[string]*template.Template, error) {
 	// Parse the templates.
 	templates := make(map[string]*template.Template)
 	for _, t := range []string{TmplIndex, TmplPost, TmplPage} {
-		tmpl, err := template.New(t).ParseFS(FS, t)
+
+		tmpl, err := parseOneTmpl(FS, t)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
 		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", t, err)
+			return nil, fmt.Errorf("parse %s: %v", t, err)
 		}
 
 		templates[t] = tmpl
@@ -102,22 +125,30 @@ func (g *Generator) Run(ctx context.Context) error {
 		}
 		defer fout.Close()
 
-		var tmpl *template.Template
-		if t := post.Meta.Template; t != "" {
-			// user defined template
-			var ok bool
-			tmpl, ok = templates[t]
-			if !ok {
-				// the template doesn't exists
-				return fmt.Errorf("template not found: %s", t)
+		var t string
+		var ok bool
+		if tt := post.Meta.Template; tt != "" {
+			// if not exists, parse the template.
+			if _, ok := templates[tt]; !ok {
+				tmpl, err := parseOneTmpl(g.templates, tt)
+				if err != nil {
+					return err
+				}
+				templates[tt] = tmpl
 			}
+			t = tt
 		} else {
 			// default template
 			if post.Meta.IsPost() {
-				tmpl = templates[TmplPost]
+				t = TmplPost
 			} else {
-				tmpl = templates[TmplPage]
+				t = TmplPage
 			}
+		}
+		tmpl, ok := templates[TmplPost]
+		if !ok {
+			// the template doesn't exists
+			return fmt.Errorf("template not found: %s", t)
 		}
 
 		err = tmpl.Execute(fout, struct {
@@ -168,6 +199,14 @@ func (g *Generator) Run(ctx context.Context) error {
 
 	t := TmplIndex
 	if tt := index.Meta.Template; tt != "" {
+		// if not exists, parse the template.
+		if _, ok := templates[tt]; !ok {
+			tmpl, err := parseOneTmpl(g.templates, tt)
+			if err != nil {
+				return err
+			}
+			templates[tt] = tmpl
+		}
 		t = tt
 	}
 
