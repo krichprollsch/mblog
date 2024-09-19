@@ -22,8 +22,13 @@ mblog expects 3 templates:
 ### Index
 
 The index page is the blog's homepage.
-The
 
 ### Metada
 
-You ca set
+You can define optional metadata in your pages.
+
+```
+title: My title
+date: 2024-09-01
+template: my_template.tmpl
+```
